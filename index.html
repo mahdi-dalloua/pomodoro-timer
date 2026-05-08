@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Pomodoro</title>
+
+  <style>
+    @font-face {
+      font-family: 'Digital7';
+      src: url('./digital-7.ttf') format('truetype');
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Bodoni Moda';
+      src: url('./BodoniModa-VariableFont_opsz,wght.ttf') format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.07), transparent 35%),
+        linear-gradient(180deg, #050505 0%, #000 100%);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Bodoni Moda', serif;
+      overflow: hidden;
+    }
+
+    body.focus-mode .top-line,
+    body.focus-mode #status,
+    body.focus-mode .btn-group {
+      display: none !important;
+    }
+
+    .wrap {
+      text-align: center;
+      width: min(92vw, 560px);
+      padding: 28px 22px;
+      position: relative;
+    }
+
+    .top-line {
+      font-size: 0.9rem;
+      opacity: 0.7;
+      letter-spacing: 2px;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+    }
+
+    #header {
+      font-size: 1.15rem;
+      opacity: 0.85;
+      margin-bottom: 18px;
+      letter-spacing: 2px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    #timer {
+      font-family: 'Digital7', monospace;
+      font-size: clamp(4rem, 12vw, 9rem);
+      letter-spacing: 8px;
+      line-height: 1;
+      text-shadow:
+        0 0 6px rgba(255,255,255,0.20),
+        0 0 18px rgba(255,255,255,0.10),
+        0 0 32px rgba(180,180,180,0.08);
+      transition: transform 0.2s ease, text-shadow 0.2s ease;
+    }
+
+    #timer.alarm-flash {
+      transform: scale(1.02);
+      text-shadow:
+        0 0 8px rgba(255,255,255,0.35),
+        0 0 22px rgba(255,255,255,0.18),
+        0 0 44px rgba(200,200,200,0.12);
+    }
+
+    #status {
+      margin-top: 14px;
+      margin-bottom: 28px;
+      opacity: 0.7;
+      letter-spacing: 1px;
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 22px;
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid #333;
+      color: #fff;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+      outline: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      appearance: none;
+    }
+
+    button:hover {
+      background: #1c1c1c;
+      border-color: #555;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:focus {
+      outline: none;
+    }
+
+    button:focus-visible {
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.16);
+    }
+
+    button::-moz-focus-inner {
+      border: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .primary {
+      min-width: 110px;
+    }
+
+    .active-btn {
+      background: #f5f5f5;
+      color: #111;
+      border-color: #f5f5f5;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.18), 0 0 18px rgba(255,255,255,0.08);
+    }
+
+    .focus-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 50;
+    }
+
+    .focus-toggle button {
+      padding: 10px 16px;
+      border-radius: 999px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.76);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal {
+      width: min(100%, 380px);
+      background: #161616;
+      border: 1px solid #333;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal h2 {
+      margin: 0 0 18px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      letter-spacing: 1px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #2b2b2b;
+      text-transform: uppercase;
+    }
+
+    .modal label {
+      display: block;
+      margin: 12px 0 6px;
+      font-size: 0.82rem;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 11px 12px;
+      background: #0f0f0f;
+      border: 1px solid #333;
+      color: #fff;
+      border-radius: 10px;
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .modal input:focus {
+      border-color: #666;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.08);
+    }
+
+    .modal .btn-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .hidden-media {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+      left: -9999px;
+      top: -9999px;
+    }
+
+    .tiny-note {
+      margin-top: 14px;
+      font-size: 0.78rem;
+      opacity: 0.45;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="focus-toggle">
+    <button id="focusBtn" type="button">Focus</button>
+  </div>
+
+  <div class="wrap">
+    <div class="top-line">Made by Mahdi Dalloua</div>
+    <div id="header">READY</div>
+    <div id="timer" data-text="25:00">25:00</div>
+    <div id="status">Idle</div>
+
+    <div class="btn-group">
+      <button id="startBtn" class="primary" type="button">Start</button>
+      <button id="resetBtn" class="primary hidden" type="button">Reset</button>
+      <button id="rainBtn" type="button">Rain Off</button>
+      <button id="settingsBtn" type="button">⚙</button>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal" id="settingsBox" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Timer Settings</h2>
+
+      <label for="studyTime">Study (min)</label>
+      <input type="number" id="studyTime" min="1" step="1" value="25">
+
+      <label for="breakTime">Break (min)</label>
+      <input type="number" id="breakTime" min="1" step="1" value="5">
+
+      <label for="sessionCount">Sessions (2 to 20)</label>
+      <input type="number" id="sessionCount" min="2" max="20" step="1" value="10">
+
+      <div class="btn-row">
+        <button id="cancelSettings" type="button">Exit</button>
+        <button id="saveSettings" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="rainAudio" src="rain.mp3" loop preload="auto"></audio>
+  <audio id="alarmSound" src="mixkit-classic-alarm-995.wav" preload="auto"></audio>
+  <audio id="clickSound" src="denielcz-immersivecontrol-button-click-sound-463065.mp3" preload="auto"></audio>
+
+  <script>
+    const DEFAULT_SETTINGS = {
+      study: 25,
+      breakMin: 5,
+      sessions: 10
+    };
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('pomodoroSettings'));
+        if (!saved) return { ...DEFAULT_SETTINGS };
+
+        const study = Number(saved.study);
+        const breakMin = Number(saved.breakMin);
+        const sessions = Number(saved.sessions);
+
+        return {
+          study: Number.isFinite(study) && study > 0 ? study : DEFAULT_SETTINGS.study,
+          breakMin: Number.isFinite(breakMin) && breakMin > 0 ? breakMin : DEFAULT_SETTINGS.breakMin,
+          sessions: Number.isFinite(sessions) ? clamp(Math.floor(sessions), 2, 20) : DEFAULT_SETTINGS.sessions
+        };
+      } catch {
+        return { ...DEFAULT_SETTINGS };
+      }
+    }
+
+    let settings = loadSettings();
+
+    let phase = 'study';
+    let sessionsDone = 0;
+    let timeLeft = settings.study * 60;
+    let interval = null;
+    let running = false;
+    let focusMode = false;
+    let rainPlaying = false;
+    let hasStarted = false;
+    let audioUnlocked = false;
+
+    const timerEl = document.getElementById('timer');
+    const headerEl = document.getElementById('header');
+    const statusEl = document.getElementById('status');
+
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const rainBtn = document.getElementById('rainBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const focusBtn = document.getElementById('focusBtn');
+
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsBox = document.getElementById('settingsBox');
+    const studyInput = document.getElementById('studyTime');
+    const breakInput = document.getElementById('breakTime');
+    const sessionInput = document.getElementById('sessionCount');
+
+    const cancelSettingsBtn = document.getElementById('cancelSettings');
+    const saveSettingsBtn = document.getElementById('saveSettings');
+
+    const rainAudio = document.getElementById('rainAudio');
+    const alarmSound = document.getElementById('alarmSound');
+    const clickSound = document.getElementById('clickSound');
+
+    function formatTime(totalSeconds) {
+      const m = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+      const s = String(totalSeconds % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function updateControls() {
+      startBtn.textContent = running ? 'Pause' : (hasStarted ? 'Resume' : 'Start');
+      resetBtn.classList.toggle('hidden', !hasStarted);
+      rainBtn.textContent = rainPlaying ? 'Rain On' : 'Rain Off';
+      rainBtn.classList.toggle('active-btn', rainPlaying);
+      focusBtn.textContent = focusMode ? 'Exit Focus' : 'Focus';
+    }
+
+    function render() {
+      const text = formatTime(timeLeft);
+      timerEl.textContent = text;
+      timerEl.setAttribute('data-text', text);
+
+      if (phase === 'study') {
+        headerEl.textContent = `STUDY ${Math.min(sessionsDone + 1, settings.sessions)} / ${settings.sessions}`;
+        statusEl.textContent = running ? 'Focus' : (hasStarted ? 'Paused' : 'Idle');
+      } else if (phase === 'break') {
+        headerEl.textContent = 'BREAK';
+        statusEl.textContent = running ? 'Rest' : 'Paused';
+      } else {
+        headerEl.textContent = 'DONE';
+        statusEl.textContent = 'Finished';
+      }
+
+      updateControls();
+    }
+
+    function flashTimer() {
+      timerEl.classList.add('alarm-flash');
+      setTimeout(() => timerEl.classList.remove('alarm-flash'), 350);
+    }
+
+    async function playOnce(audioEl) {
+      try {
+        audioEl.currentTime = 0;
+        await audioEl.play();
+      } catch {
+      }
+    }
+
+    async function unlockAudio() {
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+
+      await Promise.all([
+        playOnce(rainAudio).then(() => {
+          rainAudio.pause();
+          rainAudio.currentTime = 0;
+        }),
+        playOnce(alarmSound).then(() => {
+          alarmSound.pause();
+          alarmSound.currentTime = 0;
+        }),
+        playOnce(clickSound).then(() => {
+          clickSound.pause();
+          clickSound.currentTime = 0;
+        })
+      ]);
+    }
+
+    function playAlarm() {
+      alarmSound.pause();
+      alarmSound.currentTime = 0;
+      alarmSound.play().catch(() => {});
+    }
+
+    function playClick() {
+      clickSound.pause();
+      clickSound.currentTime = 0;
+      clickSound.play().catch(() => {});
+    }
+
+    function stopTimer() {
+      clearInterval(interval);
+      interval = null;
+      running = false;
+      render();
+    }
+
+    function pauseTimer() {
+      if (!running) return;
+      clearInterval(interval);
+      interval = null;
+      running = false;
+      render();
+    }
+
+    function finishTimer() {
+      stopTimer();
+      phase = 'done';
+      timeLeft = 0;
+      render();
+    }
+
+    function nextPhase() {
+      flashTimer();
+      playAlarm();
+
+      if (phase === 'study') {
+        sessionsDone += 1;
+
+        if (sessionsDone >= settings.sessions) {
+          finishTimer();
+          return;
+        }
+
+        phase = 'break';
+        timeLeft = settings.breakMin * 60;
+      } else if (phase === 'break') {
+        phase = 'study';
+        timeLeft = settings.study * 60;
+      }
+
+      render();
+    }
+
+    function tick() {
+      if (!running) return;
+
+      timeLeft -= 1;
+
+      if (timeLeft <= 0) {
+        timeLeft = 0;
+        render();
+        nextPhase();
+        return;
+      }
+
+      render();
+    }
+
+    function startOrResumeTimer() {
+      if (phase === 'done') {
+        resetTimer();
+      }
+
+      if (running) {
+        pauseTimer();
+        return;
+      }
+
+      unlockAudio();
+      hasStarted = true;
+      running = true;
+
+      interval = setInterval(tick, 1000);
+      render();
+    }
+
+    function resetTimer() {
+      stopTimer();
+      phase = 'study';
+      sessionsDone = 0;
+      timeLeft = settings.study * 60;
+      hasStarted = false;
+      render();
+    }
+
+    function openSettings() {
+      if (running) {
+        pauseTimer();
+      }
+
+      studyInput.value = settings.study;
+      breakInput.value = settings.breakMin;
+      sessionInput.value = settings.sessions;
+
+      settingsModal.classList.remove('hidden');
+      settingsModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeSettings() {
+      settingsModal.classList.add('hidden');
+      settingsModal.setAttribute('aria-hidden', 'true');
+    }
+
+    function saveSettings() {
+      const study = parseInt(studyInput.value, 10);
+      const breakMin = parseInt(breakInput.value, 10);
+      const sessions = parseInt(sessionInput.value, 10);
+
+      if (
+        !Number.isFinite(study) || study < 1 ||
+        !Number.isFinite(breakMin) || breakMin < 1 ||
+        !Number.isFinite(sessions) || sessions < 2 || sessions > 20
+      ) {
+        alert('Please enter valid numbers. Sessions must be between 2 and 20.');
+        return;
+      }
+
+      settings = { study, breakMin, sessions };
+      localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+
+      resetTimer();
+      closeSettings();
+    }
+
+    async function toggleRain() {
+      await unlockAudio();
+
+      if (!rainPlaying) {
+        try {
+          rainAudio.volume = 0.4;
+          await rainAudio.play();
+          rainPlaying = true;
+        } catch {
+          alert('Rain could not start. Make sure rain.mp3 exists and the filename is correct.');
+        }
+      } else {
+        rainAudio.pause();
+        rainAudio.currentTime = 0;
+        rainPlaying = false;
+      }
+
+      render();
+    }
+
+    function setFocusMode(on) {
+      focusMode = on;
+      document.body.classList.toggle('focus-mode', focusMode);
+      render();
+    }
+
+    document.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') {
+        playClick();
+      }
+    });
+
+    startBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      startOrResumeTimer();
+    });
+
+    resetBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      resetTimer();
+    });
+
+    settingsBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      openSettings();
+    });
+
+    cancelSettingsBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      closeSettings();
+    });
+
+    saveSettingsBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      saveSettings();
+    });
+
+    rainBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      toggleRain();
+    });
+
+    focusBtn.addEventListener('click', async () => {
+      await unlockAudio();
+      setFocusMode(!focusMode);
+    });
+
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        closeSettings();
+      }
+    });
+
+    settingsBox.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!settingsModal.classList.contains('hidden')) {
+          closeSettings();
+        } else if (focusMode) {
+          setFocusMode(false);
+        }
+      }
+
+      if (e.key === ' ' && !settingsModal.classList.contains('hidden')) {
+        e.preventDefault();
+      }
+
+      if (e.key === ' ' && settingsModal.classList.contains('hidden')) {
+        e.preventDefault();
+        startOrResumeTimer();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
